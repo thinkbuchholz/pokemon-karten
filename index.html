@@ -130,7 +130,7 @@ dialog input{width:100%;min-height:60px;border-radius:16px;border:3px solid var(
 <div class="kopf">
   <button class="zahn" id="zahn" aria-label="Einstellungen">⚙️</button>
   <h1>Meine Pokémon-Karten</h1>
-  <p id="untertitel">Sammeln, staunen, Schätze finden</p>
+  <p id="untertitel">Persönliche Pokémon-Sammlung von Max</p>
 </div>
 <main id="haupt"></main>
 <nav class="nav">
@@ -260,7 +260,7 @@ function zeige(t) {
 }
 
 function seiteStart() {
-  $h.innerHTML = '<div class="box" style="text-align:center"><div style="font-size:64px">⚡</div><h2>Hallo, Trainer!</h2><p class="leise">Was möchtest du tun?</p>' +
+  $h.innerHTML = '<div class="box" style="text-align:center"><div style="font-size:64px">⚡</div><h2>Hallo Max!</h2><p class="leise">Was möchtest du tun?</p>' +
     '<div class="raster r3" style="margin-top:12px"><button class="knopf gelb gross" data-g="neu">➕ Karte hinzufügen</button><button class="knopf gross" data-g="liste">🃏 Meine Karten</button><button class="knopf gruen gross" data-g="dash">📊 Schatzkiste</button></div></div>' +
     '<div id="kurz"></div>';
   Array.prototype.forEach.call($h.querySelectorAll('[data-g]'), function (b) { b.onclick = function () { zeige(b.dataset.g); }; });
