@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Meine Karten">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#3b4cca">
+<title>Meine Pokémon-Karten</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --blau:#3b4cca; --blau-d:#2a38a0; --gelb:#ffcb05; --gelb-d:#e0b000; --rot:#e63946; --gruen:#1fa855;
+  --lila:#7b4fd6; --orange:#ff8a1f; --tuerkis:#12b5c4;
+  --bg:#f3f6ff; --karte:#fff; --text:#1d2340; --leise:#5b6385; --rand:#dfe4f7;
+  --schatten:0 6px 0 rgba(42,56,160,.14), 0 10px 24px rgba(42,56,160,.10);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{font-family:ui-rounded,"SF Pro Rounded","Nunito","Trebuchet MS",system-ui,sans-serif;background:var(--bg);color:var(--text);
+  font-size:20px;line-height:1.35;padding-bottom:calc(120px + env(safe-area-inset-bottom));-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;cursor:pointer;border:0}
+input,select{font:inherit}
+.kopf{background:linear-gradient(135deg,var(--blau),var(--lila));color:#fff;padding:calc(18px + env(safe-area-inset-top)) 24px 22px;position:relative;overflow:hidden}
+.kopf h1{margin:0;font-size:34px;letter-spacing:.3px}
+.kopf p{margin:4px 0 0;opacity:.9;font-size:18px}
+.kopf::after{content:"";position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff 0 14%,var(--rot) 15% 48%,#fff 49% 52%,#ddd 53%);opacity:.18}
+main{max-width:1100px;margin:0 auto;padding:20px 16px}
+.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:3px solid var(--rand);display:flex;justify-content:center;gap:10px;
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom));z-index:20}
+.nav button{flex:1;max-width:260px;min-height:68px;border-radius:20px;background:var(--bg);font-weight:800;font-size:19px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.nav button .ic{font-size:28px;line-height:1}
+.nav button.an{background:var(--gelb);box-shadow:0 4px 0 var(--gelb-d)}
+.knopf{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:64px;padding:12px 26px;border-radius:20px;font-weight:800;font-size:21px;
+  background:var(--blau);color:#fff;box-shadow:0 5px 0 var(--blau-d);transition:transform .08s,box-shadow .08s}
+.knopf:active{transform:translateY(4px);box-shadow:0 1px 0 var(--blau-d)}
+.knopf.gelb{background:var(--gelb);color:#3a2f00;box-shadow:0 5px 0 var(--gelb-d)}
+.knopf.gruen{background:var(--gruen);box-shadow:0 5px 0 #14803f}
+.knopf.grau{background:#e8ebf8;color:var(--text);box-shadow:0 5px 0 #c9cfe9}
+.knopf.gross{min-height:80px;font-size:26px;padding:16px 34px}
+.knopf[disabled]{opacity:.5}
+.box{background:var(--karte);border-radius:26px;padding:22px;box-shadow:var(--schatten);margin-bottom:20px}
+.box h2{margin:0 0 12px;font-size:26px}
+.leise{color:var(--leise)}
+.raster{display:grid;gap:14px}
+.r2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.r3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+/* Suche */
+.suchzeile{display:flex;gap:12px;flex-wrap:wrap}
+.suchzeile input{flex:1;min-width:240px;min-height:72px;font-size:28px;padding:0 22px;border-radius:22px;border:4px solid var(--blau);outline:none;background:#fff;color:var(--text)}
+.suchzeile input:focus{border-color:var(--orange)}
+.treffer{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px;margin-top:20px}
+.tk{background:#fff;border-radius:20px;padding:10px;text-align:center;box-shadow:var(--schatten);border:4px solid transparent;cursor:pointer}
+.tk:active{border-color:var(--gelb)}
+.tk img{width:100%;aspect-ratio:5/7;object-fit:contain;border-radius:10px;background:linear-gradient(135deg,#eef1ff,#fff)}
+.tk .nm{font-weight:800;margin-top:6px;font-size:18px}
+.tk .st{font-size:15px;color:var(--leise)}
+.platz{aspect-ratio:5/7;border-radius:10px;background:#eef1ff;display:flex;align-items:center;justify-content:center;font-size:42px}
+/* Auswahl */
+.schritt{margin:22px 0 8px;font-size:23px;font-weight:800}
+.wahl{display:flex;flex-wrap:wrap;gap:12px}
+.chip{min-width:130px;min-height:88px;padding:10px 16px;border-radius:22px;background:#fff;border:4px solid var(--rand);font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:19px}
+.chip .ic{font-size:30px;line-height:1}
+.chip small{font-weight:600;color:var(--leise);font-size:14px}
+.chip.an{border-color:var(--blau);background:#e9ecff;box-shadow:0 4px 0 var(--blau-d)}
+.zaehler{display:flex;align-items:center;gap:18px}
+.zaehler button{width:84px;height:84px;border-radius:50%;font-size:46px;font-weight:900;background:var(--gelb);box-shadow:0 5px 0 var(--gelb-d)}
+.zaehler button:active{transform:translateY(4px);box-shadow:0 1px 0 var(--gelb-d)}
+.zaehler .z{font-size:56px;font-weight:900;min-width:90px;text-align:center}
+.detailkopf{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.detailkopf img{width:240px;max-width:44vw;border-radius:14px;box-shadow:var(--schatten)}
+.preisblase{background:linear-gradient(135deg,var(--gelb),#ffe377);border-radius:26px;padding:20px 26px;margin:18px 0;text-align:center}
+.preisblase .gross{font-size:56px;font-weight:900;color:#3a2f00}
+.hinweis{background:#fff6d6;border-radius:16px;padding:12px 16px;font-size:17px;margin-top:10px}
+/* Zahlen */
+.gesamt{background:linear-gradient(135deg,var(--blau),var(--lila));color:#fff;border-radius:30px;padding:26px;box-shadow:var(--schatten)}
+.gesamt .lab{font-size:20px;opacity:.9}
+.gesamt .zahl{font-size:68px;font-weight:900;line-height:1.05;letter-spacing:-1px}
+.delta{display:inline-block;margin-top:10px;padding:6px 16px;border-radius:999px;font-weight:900;font-size:24px;background:#fff}
+.plus{color:var(--gruen)} .minus{color:var(--rot)} .null{color:var(--leise)}
+.kachel{background:#fff;border-radius:24px;padding:18px;box-shadow:var(--schatten)}
+.kachel .lab{color:var(--leise);font-size:17px}
+.kachel .zahl{font-size:38px;font-weight:900}
+.schatz{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.sk{position:relative;background:linear-gradient(160deg,#fff7d1,#ffe9a0);border-radius:22px;padding:12px;text-align:center;box-shadow:var(--schatten)}
+.sk img{width:100%;aspect-ratio:5/7;object-fit:contain}
+.sk .rang{position:absolute;left:-6px;top:-8px;background:var(--rot);color:#fff;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:22px;box-shadow:0 3px 0 #a52632}
+.sk .nm{font-weight:800;margin-top:6px}
+.sk .pr{font-weight:900;font-size:22px}
+.balken{margin:10px 0}
+.balken .zeile{display:flex;justify-content:space-between;gap:10px;font-weight:700}
+.balken .spur{height:20px;background:#eceffc;border-radius:999px;overflow:hidden;margin-top:4px}
+.balken .fuell{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--tuerkis),var(--blau))}
+.gv{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.gvz{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:2px dashed var(--rand)}
+.gvz img{width:44px;height:62px;object-fit:contain;border-radius:6px}
+.gvz .w{margin-left:auto;font-weight:900;text-align:right}
+.diagramm{position:relative;height:300px}
+/* Liste */
+.werkzeug{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.werkzeug input,.werkzeug select{min-height:64px;border-radius:18px;border:3px solid var(--rand);padding:0 16px;font-size:20px;background:#fff;color:var(--text)}
+.werkzeug input{flex:1;min-width:220px}
+.liste{display:grid;gap:12px}
+.lz{display:grid;grid-template-columns:70px 1fr auto;gap:14px;align-items:center;background:#fff;border-radius:22px;padding:12px 16px;box-shadow:var(--schatten)}
+.lz img{width:70px;height:98px;object-fit:contain;border-radius:8px}
+.lz .t{font-weight:900;font-size:22px}
+.lz .m{color:var(--leise);font-size:16px}
+.lz .p{text-align:right}
+.lz .p b{font-size:26px;display:block}
+.tag{display:inline-block;background:#eceffc;border-radius:999px;padding:2px 12px;margin:3px 4px 0 0;font-size:15px;font-weight:700;color:var(--text)}
+.leer{text-align:center;padding:40px 10px}
+.leer .gross{font-size:70px}
+/* Meldungen */
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(110px + env(safe-area-inset-bottom));background:#1d2340;color:#fff;padding:16px 26px;border-radius:20px;font-weight:800;z-index:60;max-width:90vw;text-align:center}
+.warte{display:flex;align-items:center;justify-content:center;gap:14px;padding:30px;font-weight:800;font-size:22px}
+.ball{width:44px;height:44px;border-radius:50%;background:linear-gradient(#e63946 0 46%,#222 46% 54%,#fff 54%);border:4px solid #222;position:relative;animation:dreh 1s linear infinite}
+.ball::after{content:"";position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-9px;border-radius:50%;background:#fff;border:4px solid #222}
+@keyframes dreh{to{transform:rotate(360deg)}}
+.zahn{position:absolute;right:16px;top:calc(14px + env(safe-area-inset-top));background:rgba(255,255,255,.22);color:#fff;border-radius:50%;width:52px;height:52px;font-size:26px;z-index:2}
+dialog{border:0;border-radius:28px;padding:26px;max-width:560px;width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(20,25,60,.55)}
+dialog label{display:block;font-weight:800;margin:14px 0 6px}
+dialog input{width:100%;min-height:60px;border-radius:16px;border:3px solid var(--rand);padding:0 14px;font-size:20px}
+.fehlerbox{background:#ffe3e5;border-radius:18px;padding:16px;margin:12px 0;font-weight:700}
+@media (max-width:700px){.gesamt .zahl{font-size:48px}.kopf h1{font-size:28px}.lz{grid-template-columns:56px 1fr}.lz .p{grid-column:1/-1;text-align:left}}
+</style>
+</head>
+<body>
+<div class="kopf">
+  <button class="zahn" id="zahn" aria-label="Einstellungen">⚙️</button>
+  <h1>Meine Pokémon-Karten</h1>
+  <p id="untertitel">Sammeln, staunen, Schätze finden</p>
+</div>
+<main id="haupt"></main>
+<nav class="nav">
+  <button data-t="start"><span class="ic">🏠</span>Start</button>
+  <button data-t="neu"><span class="ic">➕</span>Neue Karte</button>
+  <button data-t="liste"><span class="ic">🃏</span>Meine Karten</button>
+  <button data-t="dash"><span class="ic">📊</span>Schatzkiste</button>
+</nav>
+
+<dialog id="einst">
+  <h2 style="margin-top:0">Einstellungen</h2>
+  <p class="leise">Diese Angaben speichert das iPad nur bei sich. Einmal eintragen, fertig.</p>
+  <label for="e_url">Adresse der Karten-Zentrale</label>
+  <input id="e_url" placeholder="https://n8n.verrocchio-institute.com/webhook" autocapitalize="off" autocorrect="off">
+  <label for="e_tok">Geheimer Schlüssel</label>
+  <input id="e_tok" type="password" placeholder="Schlüssel eintragen" autocapitalize="off" autocorrect="off">
+  <div style="display:flex;gap:12px;margin-top:22px;flex-wrap:wrap">
+    <button class="knopf gruen" id="e_ok">Speichern</button>
+    <button class="knopf grau" id="e_demo">Vorführmodus</button>
+    <button class="knopf grau" id="e_zu">Schließen</button>
+  </div>
+</dialog>
+
+<script>
+(function () {
+'use strict';
+
+/* ---------- Grundlagen ---------- */
+var STANDARD_URL = 'https://n8n.verrocchio-institute.com/webhook';
+var TOKEN_HEADER = 'X-Pokemon-Token';
+var eur = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+var proz = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1, minimumFractionDigits: 1, signDisplay: 'exceptZero' });
+var ganz = new Intl.NumberFormat('de-DE');
+function geld(x) { return x == null || isNaN(x) ? 'kein Preis' : eur.format(x); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function sp(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
+var demo = /[?&]demo=1/.test(location.search) || sp('pk_demo') === '1';
+var basis = (sp('pk_url') || STANDARD_URL).replace(/\/+$/, '');
+var token = sp('pk_tok') || '';
+var $h = document.getElementById('haupt');
+var chart = null;
+
+var VARIANTEN = { normal: ['⚪', 'Normal', 'ganz normal'], holo: ['✨', 'Holo', 'glitzert'], reverse: ['🌈', 'Reverse Holo', 'Rahmen glitzert'], '1st': ['1️⃣', '1. Auflage', 'Stempel „1“'], shadowless: ['🌑', 'Shadowless', 'ohne Schatten'] };
+var ZUSTAND = { nm: ['🌟', 'Wie neu', 'nm'], ex: ['😀', 'Sehr gut', 'ex'], gd: ['🙂', 'Gut', 'gd'], lp: ['😐', 'Gebraucht', 'lp'], pl: ['😕', 'Abgenutzt', 'pl'] };
+var SPRACHEN = { de: ['🇩🇪', 'Deutsch'], en: ['🇬🇧', 'Englisch'], fr: ['🇫🇷', 'Französisch'], es: ['🇪🇸', 'Spanisch'], it: ['🇮🇹', 'Italienisch'], ja: ['🇯🇵', 'Japanisch'] };
+
+/* ---------- Verbindung ---------- */
+function ruf(pfad, daten) {
+  if (demo) return demoRuf(daten);
+  if (!token) return Promise.reject(new Error('Der geheime Schlüssel fehlt. Tippe oben rechts auf das Zahnrad.'));
+  var h = { 'Content-Type': 'application/json' }; h[TOKEN_HEADER] = token;
+  return fetch(basis + '/' + pfad, { method: 'POST', headers: h, body: JSON.stringify(daten) }).then(function (r) {
+    if (r.status === 401 || r.status === 403) throw new Error('Der geheime Schlüssel stimmt nicht.');
+    if (!r.ok) throw new Error('Die Karten-Zentrale hat nicht geantwortet (Fehler ' + r.status + ').');
+    return r.json();
+  }).then(function (j) { if (j && j.ok === false) throw new Error(j.fehler || 'Das hat nicht geklappt.'); return j; });
+}
+function api(daten) { return ruf('pokemon-api', daten); }
+
+/* ---------- Vorführdaten ---------- */
+var DEMO = null;
+function demoStart() {
+  var heute = new Date().toISOString().slice(0, 10);
+  var b = 'https://assets.tcgdex.net/en/base/base1/';
+  DEMO = { karten: [
+    { id: 'base1-58|de|normal|nm', name: 'Pikachu', set_code: 'base1', set_name: 'Grundset', kartennummer: '58', sprache: 'de', variante: 'normal', zustand: 'nm', anzahl: 2, preis_aktuell: 12.88, preis_vorher: 11.2, bild_url: b + '58', seltenheit: 'Häufig', typ: 'Elektro', set_groesse: 102, preis_quelle: 'Cardmarket (TCGdex)', preis_geprueft_am: heute },
+    { id: 'base1-4|de|holo|ex', name: 'Glurak', set_code: 'base1', set_name: 'Grundset', kartennummer: '4', sprache: 'de', variante: 'holo', zustand: 'ex', anzahl: 1, preis_aktuell: 280.5, preis_vorher: 301, bild_url: b + '4', seltenheit: 'Selten Holo', typ: 'Feuer', set_groesse: 102, preis_quelle: 'Cardmarket (TCGdex)', preis_geprueft_am: heute },
+    { id: 'base1-2|de|holo|nm', name: 'Turtok', set_code: 'base1', set_name: 'Grundset', kartennummer: '2', sprache: 'de', variante: 'holo', zustand: 'nm', anzahl: 1, preis_aktuell: 95, preis_vorher: 90, bild_url: b + '2', seltenheit: 'Selten Holo', typ: 'Wasser', set_groesse: 102, preis_quelle: 'Cardmarket (TCGdex)', preis_geprueft_am: heute },
+    { id: 'base1-63|de|normal|gd', name: 'Schiggy', set_code: 'base1', set_name: 'Grundset', kartennummer: '63', sprache: 'de', variante: 'normal', zustand: 'gd', anzahl: 3, preis_aktuell: 4.2, preis_vorher: null, bild_url: b + '63', seltenheit: 'Häufig', typ: 'Wasser', set_groesse: 102, preis_quelle: 'Cardmarket (TCGdex)', preis_geprueft_am: heute },
+    { id: 'sv01-1|de|normal|nm', name: 'Bisasam', set_code: 'sv01', set_name: 'Karmesin & Purpur', kartennummer: '1', sprache: 'de', variante: 'normal', zustand: 'nm', anzahl: 4, preis_aktuell: null, preis_vorher: null, bild_url: '', seltenheit: 'Häufig', typ: 'Pflanze', set_groesse: 198, preis_quelle: 'kein Preis', preis_geprueft_am: heute }
+  ], snaps: [
+    { datum: '2026-09-01', gesamtwert: 330, gesamtwert_vorhandene: 330, anzahl_karten: 5 },
+    { datum: '2026-10-01', gesamtwert: 420, gesamtwert_vorhandene: 420, anzahl_karten: 6 },
+    { datum: '2026-10-20', gesamtwert: 455, gesamtwert_vorhandene: 455, anzahl_karten: 7 }
+  ] };
+}
+function demoRuf(d) {
+  if (!DEMO) demoStart();
+  return new Promise(function (ok) { setTimeout(function () {
+    if (d.action === 'suche') {
+      var n = (d.name || '').toLowerCase();
+      var alle = [
+        { tcgdex_id: 'base1-58', name: 'Pikachu', set_name: 'Grundset', set_code: 'base1', kartennummer: '58', set_groesse: 102, seltenheit: 'Häufig', typ: 'Elektro', varianten: ['normal', '1st', 'shadowless'], preis_vorschau: 12.88, bild: 'https://assets.tcgdex.net/en/base/base1/58/low.webp', bild_gross: 'https://assets.tcgdex.net/en/base/base1/58/high.webp' },
+        { tcgdex_id: 'base1-4', name: 'Glurak', set_name: 'Grundset', set_code: 'base1', kartennummer: '4', set_groesse: 102, seltenheit: 'Selten Holo', typ: 'Feuer', varianten: ['holo', '1st', 'shadowless'], preis_vorschau: 330, bild: 'https://assets.tcgdex.net/en/base/base1/4/low.webp', bild_gross: 'https://assets.tcgdex.net/en/base/base1/4/high.webp' }
+      ].filter(function (k) { return k.name.toLowerCase().indexOf(n) >= 0; });
+      ok({ ok: true, karten: alle, mehr: false, seite: 1 });
+    } else if (d.action === 'preis') {
+      var f = { nm: 1, ex: .85, gd: .7, lp: .6, pl: .5 }[d.zustand] || 1;
+      ok({ ok: true, preis: Math.round(12.88 * f * 100) / 100, quelle: 'Cardmarket (TCGdex)', stand: '2026-10-31', ungenau: false, richtwert: true });
+    } else if (d.action === 'erfassen') {
+      ok({ ok: true, name: 'Pikachu', anzahl_gesamt: d.anzahl, preis: 12.88 });
+    } else if (d.action === 'sammlung') {
+      ok({ ok: true, heute: new Date().toISOString().slice(0, 10), karten: DEMO.karten, snapshots: DEMO.snaps });
+    } else ok({ ok: true });
+  }, 350); });
+}
+
+/* ---------- Zustand ---------- */
+var S = { tab: 'start', sammlung: null, snaps: [], suche: { name: '', treffer: null, seite: 1, mehr: false, laedt: false }, wahl: null, filter: '', sort: 'wert' };
+
+function toast(t) { var e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.appendChild(e); setTimeout(function () { e.remove(); }, 3200); }
+function warte(t) { $h.innerHTML = '<div class="box warte"><div class="ball"></div>' + esc(t || 'Moment …') + '</div>'; }
+function fehler(e, zurueck) {
+  $h.innerHTML = '<div class="box"><h2>Oh, das hat gehakt</h2><div class="fehlerbox">' + esc(e.message || e) + '</div><button class="knopf" id="nochmal">Nochmal versuchen</button> <button class="knopf grau" id="zuz">Einstellungen</button></div>';
+  document.getElementById('nochmal').onclick = zurueck || function () { zeige(S.tab); };
+  document.getElementById('zuz').onclick = oeffneEinst;
+}
+function wert(k) { return k.preis_aktuell == null ? 0 : k.preis_aktuell * k.anzahl; }
+function bildVon(k) { return k.bild_url || ''; }
+function bildTag(url, cls) { return url ? '<img loading="lazy" ' + (cls ? 'class="' + cls + '" ' : '') + 'src="' + esc(url) + '" alt="" onerror="this.outerHTML=\'<div class=platz>🃏</div>\'">' : '<div class="platz">🃏</div>'; }
+
+function ladeSammlung(erzwingen) {
+  if (S.sammlung && !erzwingen) return Promise.resolve();
+  return api({ action: 'sammlung' }).then(function (j) { S.sammlung = j.karten || []; S.snaps = (j.snapshots || []).slice().sort(function (a, b) { return a.datum < b.datum ? -1 : 1; }); S.heute = j.heute; });
+}
+
+/* ---------- Seiten ---------- */
+function zeige(t) {
+  S.tab = t;
+  Array.prototype.forEach.call(document.querySelectorAll('.nav button'), function (b) { b.classList.toggle('an', b.dataset.t === t); });
+  if (chart) { chart.destroy(); chart = null; }
+  window.scrollTo(0, 0);
+  if (t === 'start') return seiteStart();
+  if (t === 'neu') return seiteSuche();
+  if (t === 'liste') return seiteListe();
+  if (t === 'dash') return seiteDash();
+}
+
+function seiteStart() {
+  $h.innerHTML = '<div class="box" style="text-align:center"><div style="font-size:64px">⚡</div><h2>Hallo, Trainer!</h2><p class="leise">Was möchtest du tun?</p>' +
+    '<div class="raster r3" style="margin-top:12px"><button class="knopf gelb gross" data-g="neu">➕ Karte hinzufügen</button><button class="knopf gross" data-g="liste">🃏 Meine Karten</button><button class="knopf gruen gross" data-g="dash">📊 Schatzkiste</button></div></div>' +
+    '<div id="kurz"></div>';
+  Array.prototype.forEach.call($h.querySelectorAll('[data-g]'), function (b) { b.onclick = function () { zeige(b.dataset.g); }; });
+  ladeSammlung().then(function () {
+    var n = S.sammlung.reduce(function (a, k) { return a + k.anzahl; }, 0), w = S.sammlung.reduce(function (a, k) { return a + wert(k); }, 0);
+    var el = document.getElementById('kurz'); if (!el) return;
+    el.innerHTML = '<div class="raster r2"><div class="kachel"><div class="lab">Karten insgesamt</div><div class="zahl">' + ganz.format(n) + '</div></div><div class="kachel"><div class="lab">Wert deiner Sammlung</div><div class="zahl">' + geld(w) + '</div></div></div>';
+  }).catch(function () {});
+}
+
+function seiteSuche() {
+  var s = S.suche;
+  $h.innerHTML = '<div class="box"><h2>Welches Pokémon?</h2><div class="suchzeile"><input id="q" placeholder="z. B. Pikachu" value="' + esc(s.name) + '" enterkeyhint="search" autocomplete="off" autocapitalize="words"><button class="knopf gelb" id="los">🔍 Suchen</button></div><div id="tr"></div></div>';
+  var q = document.getElementById('q');
+  function los() { var n = q.value.trim(); if (n.length < 2) { toast('Schreibe mindestens zwei Buchstaben.'); return; } suche(n, 1); }
+  document.getElementById('los').onclick = los;
+  q.onkeydown = function (e) { if (e.key === 'Enter') los(); };
+  if (s.treffer) zeigeTreffer(); else setTimeout(function () { q.focus(); }, 50);
+}
+function suche(name, seite) {
+  var s = S.suche; s.name = name; s.seite = seite; s.laedt = true;
+  var tr = document.getElementById('tr'); if (seite === 1) { tr.innerHTML = '<div class="warte"><div class="ball"></div>Ich suche …</div>'; s.treffer = []; }
+  api({ action: 'suche', name: name, sprache: 'de', seite: seite }).then(function (j) {
+    s.laedt = false; s.treffer = (seite === 1 ? [] : s.treffer).concat(j.karten || []); s.mehr = !!j.mehr; zeigeTreffer();
+  }).catch(function (e) { s.laedt = false; fehler(e, function () { zeige('neu'); }); });
+}
+function zeigeTreffer() {
+  var s = S.suche, tr = document.getElementById('tr'); if (!tr) return;
+  if (!s.treffer.length) { tr.innerHTML = '<div class="leer"><div class="gross">🤔</div><p>Dazu habe ich keine Karte gefunden. Prüfe die Schreibweise, zum Beispiel „Glurak“ statt „Charizard“.</p></div>'; return; }
+  tr.innerHTML = '<p class="leise">Tippe auf deine Karte.</p><div class="treffer">' + s.treffer.map(function (k, i) {
+    return '<div class="tk" data-i="' + i + '">' + bildTag(k.bild) + '<div class="nm">' + esc(k.name) + '</div><div class="st">' + esc(k.set_name) + ' · ' + esc(k.kartennummer) + (k.set_groesse ? '/' + esc(k.set_groesse) : '') + '</div></div>';
+  }).join('') + '</div>' + (s.mehr ? '<div style="text-align:center;margin-top:18px"><button class="knopf" id="mehr">Mehr zeigen</button></div>' : '');
+  Array.prototype.forEach.call(tr.querySelectorAll('.tk'), function (e) { e.onclick = function () { waehle(S.suche.treffer[+e.dataset.i]); }; });
+  var m = document.getElementById('mehr'); if (m) m.onclick = function () { suche(s.name, s.seite + 1); };
+}
+
+function waehle(k) {
+  S.wahl = { karte: k, variante: k.varianten[0] || 'normal', zustand: 'nm', sprache: 'de', anzahl: 1, preis: null, preisInfo: null };
+  seiteWahl();
+}
+function seiteWahl() {
+  var w = S.wahl, k = w.karte;
+  var vh = k.varianten.map(function (v) { var d = VARIANTEN[v] || ['🃏', v, '']; return '<button class="chip' + (w.variante === v ? ' an' : '') + '" data-v="' + v + '"><span class="ic">' + d[0] + '</span>' + d[1] + '<small>' + d[2] + '</small></button>'; }).join('');
+  var zh = Object.keys(ZUSTAND).map(function (z) { var d = ZUSTAND[z]; return '<button class="chip' + (w.zustand === z ? ' an' : '') + '" data-z="' + z + '"><span class="ic">' + d[0] + '</span>' + d[1] + '<small>' + d[2] + '</small></button>'; }).join('');
+  var sh = Object.keys(SPRACHEN).map(function (s) { var d = SPRACHEN[s]; return '<button class="chip' + (w.sprache === s ? ' an' : '') + '" data-s="' + s + '"><span class="ic">' + d[0] + '</span>' + d[1] + '</button>'; }).join('');
+  $h.innerHTML = '<div class="box"><button class="knopf grau" id="zr">⬅️ Zurück zur Suche</button>' +
+    '<div class="detailkopf" style="margin-top:16px">' + bildTag(k.bild_gross || k.bild) + '<div style="flex:1;min-width:240px"><h2 style="font-size:32px">' + esc(k.name) + '</h2><div class="leise">' + esc(k.set_name) + ' · Nr. ' + esc(k.kartennummer) + (k.set_groesse ? ' von ' + esc(k.set_groesse) : '') + '</div><div>' + (k.seltenheit ? '<span class="tag">' + esc(k.seltenheit) + '</span>' : '') + (k.typ ? '<span class="tag">' + esc(k.typ) + '</span>' : '') + '</div></div></div>' +
+    '<div class="schritt">1. Welche Sprache steht auf deiner Karte?</div><div class="wahl">' + sh + '</div>' +
+    '<div class="schritt">2. Wie sieht deine Karte aus?</div><div class="wahl">' + vh + '</div>' +
+    '<div class="schritt">3. In welchem Zustand ist sie?</div><div class="wahl">' + zh + '</div>' +
+    '<div class="schritt">4. Wie viele hast du?</div><div class="zaehler"><button id="minus">−</button><div class="z" id="anz">' + w.anzahl + '</div><button id="plus">+</button></div>' +
+    '<div id="preis"></div></div>';
+  document.getElementById('zr').onclick = function () { zeige('neu'); };
+  Array.prototype.forEach.call($h.querySelectorAll('[data-v]'), function (b) { b.onclick = function () { w.variante = b.dataset.v; seiteWahl(); }; });
+  Array.prototype.forEach.call($h.querySelectorAll('[data-z]'), function (b) { b.onclick = function () { w.zustand = b.dataset.z; seiteWahl(); }; });
+  Array.prototype.forEach.call($h.querySelectorAll('[data-s]'), function (b) { b.onclick = function () { w.sprache = b.dataset.s; seiteWahl(); }; });
+  document.getElementById('minus').onclick = function () { w.anzahl = Math.max(1, w.anzahl - 1); document.getElementById('anz').textContent = w.anzahl; zeigePreis(); };
+  document.getElementById('plus').onclick = function () { w.anzahl = Math.min(99, w.anzahl + 1); document.getElementById('anz').textContent = w.anzahl; zeigePreis(); };
+  holePreis();
+}
+var preisZaehler = 0;
+function holePreis() {
+  var w = S.wahl, nr = ++preisZaehler; w.preis = null; w.preisInfo = null;
+  document.getElementById('preis').innerHTML = '<div class="warte"><div class="ball"></div>Ich schaue den Preis nach …</div>';
+  api({ action: 'preis', tcgdex_id: w.karte.tcgdex_id, variante: w.variante, zustand: w.zustand, kartensprache: w.sprache }).then(function (j) {
+    if (nr !== preisZaehler || !document.getElementById('preis')) return; w.preis = j.preis; w.preisInfo = j; zeigePreis();
+  }).catch(function (e) { if (nr !== preisZaehler || !document.getElementById('preis')) return; w.preis = null; w.preisInfo = { fehler: e.message }; zeigePreis(); });
+}
+function zeigePreis() {
+  var w = S.wahl, el = document.getElementById('preis'); if (!el) return;
+  var i = w.preisInfo || {};
+  var kopf;
+  if (w.preis == null) kopf = '<div class="preisblase"><div>Aktueller Marktwert</div><div class="gross">kein Preis</div><div class="leise">' + esc(i.fehler || 'Für diese Karte gibt es gerade keinen Preis. Du kannst sie trotzdem speichern.') + '</div></div>';
+  else kopf = '<div class="preisblase"><div>Aktueller Marktwert pro Karte</div><div class="gross">' + geld(w.preis) + '</div>' + (w.anzahl > 1 ? '<div>Zusammen: <b>' + geld(w.preis * w.anzahl) + '</b></div>' : '') + '</div>' +
+    (w.zustand !== 'nm' ? '<div class="hinweis">Der Preis für den Zustand ist eine grobe Schätzung.</div>' : '') + (i.ungenau ? '<div class="hinweis">Für genau diese Ausführung gibt es keinen eigenen Preis. Das ist ein Richtwert.</div>' : i.richtwert ? '<div class="hinweis">Das ist ein Richtwert. Er gilt für Karten in allen Sprachen zusammen.</div>' : '');
+  el.innerHTML = kopf + '<div style="text-align:center;margin-top:18px"><div class="schritt" style="margin-top:0">In meine Sammlung?</div><button class="knopf gruen gross" id="ja">✅ Ja, speichern</button> <button class="knopf grau gross" id="nein">❌ Nein</button></div>';
+  document.getElementById('nein').onclick = function () { zeige('neu'); };
+  document.getElementById('ja').onclick = speichere;
+}
+function speichere() {
+  var w = S.wahl, b = document.getElementById('ja'); if (b) b.disabled = true;
+  api({ action: 'erfassen', tcgdex_id: w.karte.tcgdex_id, variante: w.variante, zustand: w.zustand, kartensprache: w.sprache, anzahl: w.anzahl, bild_url: (w.karte.bild || '').replace(/\/low\.webp$/, '') }).then(function (j) {
+    S.sammlung = null; S.suche = { name: '', treffer: null, seite: 1, mehr: false, laedt: false };
+    $h.innerHTML = '<div class="box leer"><div class="gross">🎉</div><h2>Gespeichert!</h2><p>' + esc(w.karte.name) + ' ist jetzt in deiner Sammlung. Davon hast du ' + esc(j.anzahl_gesamt) + '.</p><button class="knopf gelb gross" data-g="neu">➕ Noch eine Karte</button> <button class="knopf gross" data-g="dash">📊 Schatzkiste</button></div>';
+    Array.prototype.forEach.call($h.querySelectorAll('[data-g]'), function (x) { x.onclick = function () { zeige(x.dataset.g); }; });
+  }).catch(function (e) { if (b) b.disabled = false; toast(e.message); });
+}
+
+function seiteListe() {
+  warte('Ich hole deine Karten …');
+  ladeSammlung(true).then(function () {
+    $h.innerHTML = '<div class="werkzeug"><input id="f" type="search" placeholder="🔍 Karte suchen" value="' + esc(S.filter) + '"><select id="so"><option value="wert">Teuerste zuerst</option><option value="name">Nach Name</option><option value="set">Nach Set</option><option value="neu">Zuletzt hinzugefügt</option></select><button class="knopf" id="up">🔄 Preise aktualisieren</button></div><div id="li"></div>';
+    document.getElementById('so').value = S.sort;
+    document.getElementById('f').oninput = function (e) { S.filter = e.target.value; listeZeichnen(); };
+    document.getElementById('so').onchange = function (e) { S.sort = e.target.value; listeZeichnen(); };
+    document.getElementById('up').onclick = aktualisiere;
+    listeZeichnen();
+  }).catch(function (e) { fehler(e); });
+}
+function listeZeichnen() {
+  var f = S.filter.trim().toLowerCase();
+  var l = S.sammlung.filter(function (k) { return !f || (k.name + ' ' + k.set_name + ' ' + k.kartennummer).toLowerCase().indexOf(f) >= 0; });
+  var so = { wert: function (a, b) { return wert(b) - wert(a); }, name: function (a, b) { return a.name.localeCompare(b.name, 'de'); }, set: function (a, b) { return (a.set_name + a.kartennummer).localeCompare(b.set_name + b.kartennummer, 'de', { numeric: true }); }, neu: function (a, b) { return String(b.erfasst_am || '').localeCompare(String(a.erfasst_am || '')); } }[S.sort];
+  l.sort(so);
+  var el = document.getElementById('li'); if (!el) return;
+  if (!S.sammlung.length) { el.innerHTML = '<div class="box leer"><div class="gross">📭</div><h2>Noch keine Karten</h2><p>Tippe auf „Neue Karte“, um die erste zu speichern.</p></div>'; return; }
+  if (!l.length) { el.innerHTML = '<div class="box leer">Nichts gefunden.</div>'; return; }
+  el.innerHTML = '<div class="liste">' + l.map(function (k) {
+    var v = VARIANTEN[k.variante] || ['', k.variante], z = ZUSTAND[k.zustand] || ['', k.zustand], s = SPRACHEN[k.sprache] || [k.sprache, k.sprache];
+    return '<div class="lz">' + bildTag(bildVon(k) ? bildVon(k) + '/low.webp' : '') + '<div><div class="t">' + esc(k.name) + '</div><div class="m">' + esc(k.set_name) + ' · Nr. ' + esc(k.kartennummer) + '</div><div><span class="tag">' + s[0] + ' ' + (s[1] || '') + '</span><span class="tag">' + v[0] + ' ' + v[1] + '</span><span class="tag">' + z[0] + ' ' + z[1] + '</span><span class="tag">' + k.anzahl + '×</span></div></div>' +
+      '<div class="p"><div class="leise">je ' + geld(k.preis_aktuell) + '</div><b>' + (k.preis_aktuell == null ? '–' : geld(wert(k))) + '</b></div></div>';
+  }).join('') + '</div>';
+}
+function aktualisiere() {
+  var b = document.getElementById('up'); if (b) b.disabled = true;
+  warte('Ich hole frische Preise. Das kann eine Minute dauern …');
+  ruf('pokemon-preise', {}).then(function (j) {
+    toast('Fertig! ' + ((j.details && j.details.aktualisiert) || 0) + ' Karten haben einen neuen Preis.');
+    S.sammlung = null; zeige('liste');
+  }).catch(function (e) { fehler(e, function () { zeige('liste'); }); });
+}
+
+/* ---------- Schatzkiste ---------- */
+function deltaTag(p) {
+  if (p == null || !isFinite(p)) return '<span class="delta null">noch kein Vergleich</span>';
+  var c = Math.abs(p) < 0.05 ? 'null' : p > 0 ? 'plus' : 'minus';
+  return '<span class="delta ' + c + '">' + (p > 0.05 ? '▲ ' : p < -0.05 ? '▼ ' : '● ') + proz.format(p) + ' %</span>';
+}
+function seiteDash() {
+  warte('Ich zähle deine Schätze …');
+  ladeSammlung(true).then(function () {
+    var K = S.sammlung;
+    if (!K.length) { $h.innerHTML = '<div class="box leer"><div class="gross">📭</div><h2>Noch keine Schätze</h2><p>Speichere zuerst ein paar Karten.</p></div>'; return; }
+    var gesamt = K.reduce(function (a, k) { return a + wert(k); }, 0);
+    var anzahl = K.reduce(function (a, k) { return a + k.anzahl; }, 0);
+    var snaps = S.snaps, letzter = null;
+    for (var i = snaps.length - 1; i >= 0; i--) { if (snaps[i].datum < (S.heute || '9999')) { letzter = snaps[i]; break; } }
+    if (!letzter && snaps.length > 1) letzter = snaps[snaps.length - 2];
+    var d1 = letzter && letzter.gesamtwert > 0 ? (gesamt - letzter.gesamtwert) / letzter.gesamtwert * 100 : null;
+    var mitVor = K.filter(function (k) { return k.preis_aktuell != null && k.preis_vorher != null; });
+    var jetztV = mitVor.reduce(function (a, k) { return a + k.preis_aktuell * k.anzahl; }, 0), vorV = mitVor.reduce(function (a, k) { return a + k.preis_vorher * k.anzahl; }, 0);
+    var d2 = vorV > 0 ? (jetztV - vorV) / vorV * 100 : null;
+    var top = K.slice().sort(function (a, b) { return (b.preis_aktuell || 0) - (a.preis_aktuell || 0); }).filter(function (k) { return k.preis_aktuell != null; }).slice(0, 5);
+    var ohne = K.filter(function (k) { return k.preis_aktuell == null; }).length;
+
+    function gruppe(fn, wf) { var m = {}; K.forEach(function (k) { var key = fn(k) || 'Unbekannt'; m[key] = (m[key] || 0) + wf(k); }); return Object.keys(m).map(function (x) { return [x, m[x]]; }).sort(function (a, b) { return b[1] - a[1]; }); }
+    function balken(daten, fmt) { var mx = Math.max.apply(null, daten.map(function (d) { return d[1]; }).concat([1])); return daten.map(function (d) { return '<div class="balken"><div class="zeile"><span>' + esc(d[0]) + '</span><span>' + fmt(d[1]) + '</span></div><div class="spur"><div class="fuell" style="width:' + Math.max(3, d[1] / mx * 100) + '%"></div></div></div>'; }).join(''); }
+    var proSet = gruppe(function (k) { return k.set_name; }, wert);
+    var proSelt = gruppe(function (k) { return k.seltenheit; }, function (k) { return k.anzahl; });
+    var proTyp = gruppe(function (k) { return k.typ; }, wert).filter(function (d) { return d[0] !== 'Unbekannt' || d[1] > 0; });
+
+    var sets = {};
+    K.forEach(function (k) { var s = sets[k.set_code] || (sets[k.set_code] = { name: k.set_name, gr: k.set_groesse, nr: {} }); s.nr[k.kartennummer] = 1; if (k.set_groesse) s.gr = k.set_groesse; });
+    var fort = Object.keys(sets).map(function (c) { var s = sets[c], n = Object.keys(s.nr).length; return { name: s.name, n: n, gr: s.gr }; }).sort(function (a, b) { return b.n - a.n; });
+    var fortH = fort.map(function (s) { return s.gr ? '<div class="balken"><div class="zeile"><span>' + esc(s.name) + '</span><span>' + s.n + ' von ' + s.gr + ' Karten</span></div><div class="spur"><div class="fuell" style="width:' + Math.max(3, s.n / s.gr * 100) + '%;background:linear-gradient(90deg,var(--orange),var(--gelb))"></div></div></div>' : '<div class="balken"><div class="zeile"><span>' + esc(s.name) + '</span><span>' + s.n + ' Karten</span></div></div>'; }).join('');
+
+    var bew = mitVor.map(function (k) { return { k: k, d: (k.preis_aktuell - k.preis_vorher) * k.anzahl }; }).filter(function (x) { return Math.abs(x.d) >= 0.005; });
+    var gew = bew.filter(function (x) { return x.d > 0; }).sort(function (a, b) { return b.d - a.d; }).slice(0, 5);
+    var ver = bew.filter(function (x) { return x.d < 0; }).sort(function (a, b) { return a.d - b.d; }).slice(0, 5);
+    function gvListe(l, cls) { return l.length ? l.map(function (x) { return '<div class="gvz">' + bildTag(bildVon(x.k) ? bildVon(x.k) + '/low.webp' : '') + '<div><b>' + esc(x.k.name) + '</b><div class="leise" style="font-size:15px">' + esc(x.k.set_name) + '</div></div><div class="w ' + cls + '">' + (x.d > 0 ? '+' : '') + geld(x.d) + '</div></div>'; }).join('') : '<p class="leise">Noch nichts verändert.</p>'; }
+
+    $h.innerHTML =
+      '<div class="gesamt"><div class="lab">Gesamtwert deiner Sammlung</div><div class="zahl">' + geld(gesamt) + '</div>' + deltaTag(d1) + '<span class="lab" style="margin-left:10px">seit ' + (letzter ? 'dem ' + esc(letzter.datum.split('-').reverse().join('.')) : 'dem letzten Mal') + '</span></div>' +
+      '<div class="raster r3" style="margin:20px 0"><div class="kachel"><div class="lab">Nur die Karten, die schon da waren</div><div class="zahl">' + deltaTag(d2) + '</div><div class="leise" style="font-size:15px">Neue Karten zählen hier nicht mit.</div></div><div class="kachel"><div class="lab">Karten insgesamt</div><div class="zahl">' + ganz.format(anzahl) + '</div></div><div class="kachel"><div class="lab">Verschiedene Karten</div><div class="zahl">' + ganz.format(K.length) + '</div>' + (ohne ? '<div class="leise" style="font-size:15px">' + ohne + ' ohne Preis</div>' : '') + '</div></div>' +
+      '<div class="box"><h2>🏆 Meine Schatzkiste</h2><div class="schatz">' + top.map(function (k, i) { return '<div class="sk"><div class="rang">' + (i + 1) + '</div>' + bildTag(bildVon(k) ? bildVon(k) + '/low.webp' : '') + '<div class="nm">' + esc(k.name) + '</div><div class="pr">' + geld(k.preis_aktuell) + '</div></div>'; }).join('') + '</div></div>' +
+      '<div class="box"><h2>📈 So hat sich mein Schatz entwickelt</h2>' + (snaps.length > 1 ? '<div class="diagramm"><canvas id="cv"></canvas></div>' : '<p class="leise">Das Diagramm erscheint, sobald es zwei Tage mit Preisen gibt. Tippe in „Meine Karten“ auf „Preise aktualisieren“.</p>') + '</div>' +
+      '<div class="gv"><div class="box"><h2>🚀 Gewinner</h2>' + gvListe(gew, 'plus') + '</div><div class="box"><h2>🪂 Verlierer</h2>' + gvListe(ver, 'minus') + '</div></div>' +
+      '<div class="box"><h2>📚 Sammel-Fortschritt</h2>' + fortH + '</div>' +
+      '<div class="gv"><div class="box"><h2>💰 Wert pro Set</h2>' + balken(proSet, geld) + '</div><div class="box"><h2>⭐ Karten pro Seltenheit</h2>' + balken(proSelt, function (x) { return x + ' Karten'; }) + '</div></div>' +
+      (proTyp.length ? '<div class="box"><h2>🔥 Wert pro Typ</h2>' + balken(proTyp, geld) + '</div>' : '');
+    if (snaps.length > 1 && window.Chart) {
+      var farbe = getComputedStyle(document.documentElement).getPropertyValue('--blau').trim();
+      chart = new Chart(document.getElementById('cv'), { type: 'line', data: { labels: snaps.map(function (s) { return s.datum.split('-').reverse().slice(0, 2).join('.'); }), datasets: [{ label: 'Gesamtwert', data: snaps.map(function (s) { return s.gesamtwert; }), borderColor: farbe, backgroundColor: 'rgba(59,76,202,.15)', fill: true, tension: .3, borderWidth: 4, pointRadius: 6, pointBackgroundColor: '#ffcb05', pointBorderColor: farbe, pointBorderWidth: 3 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return geld(c.parsed.y); } } } }, scales: { y: { ticks: { callback: function (v) { return geld(v); }, font: { size: 14 } } }, x: { ticks: { font: { size: 14 } } } } } });
+    }
+  }).catch(function (e) { fehler(e); });
+}
+
+/* ---------- Einstellungen ---------- */
+var dlg = document.getElementById('einst');
+function oeffneEinst() { document.getElementById('e_url').value = sp('pk_url') || STANDARD_URL; document.getElementById('e_tok').value = token; if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', ''); }
+document.getElementById('zahn').onclick = oeffneEinst;
+document.getElementById('e_zu').onclick = function () { dlg.close(); };
+document.getElementById('e_ok').onclick = function () {
+  var u = document.getElementById('e_url').value.trim(), t = document.getElementById('e_tok').value.trim();
+  if (u && !/^https:\/\//.test(u)) { toast('Die Adresse muss mit https:// beginnen.'); return; }
+  sp('pk_url', u || null); sp('pk_tok', t || null); sp('pk_demo', null);
+  basis = (u || STANDARD_URL).replace(/\/+$/, ''); token = t; demo = false; S.sammlung = null; dlg.close(); toast('Gespeichert'); zeige(S.tab);
+};
+document.getElementById('e_demo').onclick = function () { sp('pk_demo', '1'); demo = true; S.sammlung = null; dlg.close(); document.getElementById('untertitel').textContent = 'Vorführmodus: Das sind Beispielkarten'; zeige(S.tab); };
+
+Array.prototype.forEach.call(document.querySelectorAll('.nav button'), function (b) { b.onclick = function () { zeige(b.dataset.t); }; });
+if (demo) document.getElementById('untertitel').textContent = 'Vorführmodus: Das sind Beispielkarten';
+zeige('start');
+if (!demo && !token) setTimeout(oeffneEinst, 400);
+})();
+</script>
+</body>
+</html>
